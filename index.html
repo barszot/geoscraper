@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Map Generator</title>
+    <style>
+        body {
+            text-align: center; /* Wyśrodkowanie w poziomie */
+ 
+            font-family: 'Arial', sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+
+        .button-green {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+
+        .button-green:hover {
+            background-color: #0c6429;
+        }
+
+        .button-blue {
+            padding: 10px 20px;
+            background-color: #3067df;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+            margin-bottom: 20px;
+        }
+
+        .button-blue:hover {
+            background-color: #281cd4;
+        }
+
+
+        #imageContainer {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .map-image {
+            max-width: 600px;
+            height: auto;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-shadow: 0 0 5px rgba(0,0,0,0.1);
+        }
+        
+        .logo {
+            width: 200px; /* Zmniejszenie rozmiaru obrazu */
+            height: auto; /* Zachowanie proporcji */
+        }
+        
+        .loading {
+            display: none;
+            color: #555;
+            margin: 20px 0;
+        }
+
+        .error {
+            color: #ff4444;
+            margin-top: 10px;
+        }
+
+        .light-blue {
+            color: #4151df; /* Jasno niebieski */
+        }
+
+        .light-green {
+            color: #199619; /* Jasno zielony */
+        }
+
+        .dark-red {
+            color: #910707; /* Ciemny czerwony */
+        }
+
+        .light-red {
+            color: #e7260d; /* Jasnoczerwono-różowy */
+        }
+
+        .bold {
+            font-weight: bold; /* Pogrubienie tekstu */
+        }        
+        .link-blue {
+            color: #1b199c;
+        }
+
+        .list {
+            line-height: 1.3; 
+            text-align: left;
+        }
+
+    </style>
+</head>
+<body>
+    
+    <div class="container">
+        <img src="logo.png" class="logo" alt="Logo strony Geoscraper" />
+ 
+        <h1>Geoscraper</h1>
+        <div class="input-group">
+            <input type="text" id="addressInput" placeholder="Podaj adres...">
+            <button onclick="generateMap()" class="button-green">Pokaż mapę</button>
+        </div>
+        <div class="list">
+            <div><span class="bold light-blue">Działki ewidencyjne</span> są oznaczone niebieskimi liniami.</div>
+            <div><span class="bold dark-red">Budynki</span> są oznaczone ciemnoczerwonymi liniami.</div>
+            <div><span class="bold light-green">Obszary związane ze środowiskiem</span> są oznaczone zielonymi polami.</div>
+            <div><span class="bold light-red">Obszary z zabytkami</span> są oznaczone jasnoczerwonymi polami.</div>
+        </div>        
+        <div class="loading" id="loading">Ładowanie mapy...</div>
+        <div id="imageContainer"></div>
+        <div class="error" id="errorMessage"></div>
+    </div>
+
+    <div class="container">
+        <button class="button-blue" onclick="toggleAPIList()">Wykorzystywane API</button>
+        <div id="apiList" class="list link-blue" style="display: none;">
+            <div>https://nominatim.openstreetmap.org/search</div>
+            <div>https://mapy.geoportal.gov.pl/wss/ext/KrajowaIntegracjaNumeracjiAdresowej</div>
+            <div>https://integracja.gugik.gov.pl/cgi-bin/KrajowaIntegracjaEwidencjiGruntow</div>
+            <div>https://sdi.gdos.gov.pl/wms</div>
+            <div>https://usluga.zabytek.gov.pl/INSPIRE_IMD/service.svc/get</div>
+        </div>
+    </div>
+
+    <script>
+        async function generateMap() {
+            const address = document.getElementById('addressInput').value;
+            const imageContainer = document.getElementById('imageContainer');
+            const loading = document.getElementById('loading');
+            const errorMessage = document.getElementById('errorMessage');
+
+            // Reset previous state
+            errorMessage.textContent = '';
+            imageContainer.innerHTML = '';
+            loading.style.display = 'block';
+
+            try {
+                const formData = new FormData();
+                formData.append('address', address);
+
+                const response = await fetch('http://localhost:5000/generate-map', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const imageBlob = await response.blob();
+                const imageUrl = URL.createObjectURL(imageBlob);
+                
+                imageContainer.innerHTML = `<img src="${imageUrl}" class="map-image" alt="Wygenerowana mapa">`;
+            } catch (error) {
+                errorMessage.textContent = `Błąd: ${error.message}`;
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+
+        // Allow Enter key to trigger generation
+        document.getElementById('addressInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                generateMap();
+            }
+        });
+
+        function toggleAPIList() {
+            const apiList = document.getElementById("apiList");
+            if (apiList.style.display === "block") {
+                apiList.style.display = "none";
+            } else {
+                apiList.style.display = "block";
+            }
+        }
+
+    </script>
+</body>
+</html>
